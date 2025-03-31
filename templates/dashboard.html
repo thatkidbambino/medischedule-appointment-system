@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Welcome, {{ current_user.username }}</h2>
+<a href="{{ url_for('book_appointment') }}" class="btn btn-success mb-3">Book New Appointment</a>
+
+<h3>Your Appointments:</h3>
+<ul class="list-group">
+{% for appointment in appointments %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ appointment.date }} at {{ appointment.time }} - {{ appointment.patient_name }} ({{ appointment.reason }})
+        <div>
+            <a href="{{ url_for('edit_appointment', id=appointment.id) }}" class="btn btn-sm btn-warning">Edit</a>
+            <a href="{{ url_for('delete_appointment', id=appointment.id) }}" class="btn btn-sm btn-danger">Cancel</a>
+        </div>
+    </li>
+{% else %}
+    <li class="list-group-item">No appointments yet.</li>
+{% endfor %}
+</ul>
+{% endblock %}
