@@ -6,13 +6,23 @@ import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'thisisasecretkey'
+
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(basedir, 'database', 'medisched.db')}"
+db_path = os.path.join(basedir, 'database', 'medisched.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# Ensure DB exists on every startup (even in production)
+with app.app_context():
+    if not os.path.exists(os.path.join(basedir, 'database')):
+        os.makedirs(os.path.join(basedir, 'database'))
+    if not os.path.exists(db_path):
+        db.create_all()
+        print('✅ Database created!')
 
 # ==============================
 # Database Models
@@ -31,7 +41,7 @@ class Appointment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 # ==============================
-# Flask-Login Configuration
+# Login Loader
 # ==============================
 @login_manager.user_loader
 def load_user(user_id):
@@ -42,7 +52,7 @@ def load_user(user_id):
 # ==============================
 @app.route('/')
 def home():
-    return render_template('home.html')
+    return redirect(url_for('login'))  # Redirect users to login instead of blank home.html
 
 @app.route('/dashboard')
 @login_required
@@ -93,7 +103,7 @@ def login():
 def logout():
     logout_user()
     flash('You have been logged out.', 'info')
-    return redirect(url_for('home'))
+    return redirect(url_for('login'))
 
 @app.route('/book', methods=['GET', 'POST'])
 @login_required
@@ -118,7 +128,6 @@ def book_appointment():
 
     return render_template('appointments.html')
 
-
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_appointment(id):
@@ -138,7 +147,6 @@ def edit_appointment(id):
 
     return render_template('appointments.html', appointment=appointment)
 
-
 @app.route('/delete/<int:id>')
 @login_required
 def delete_appointment(id):
@@ -152,13 +160,3 @@ def delete_appointment(id):
     flash('Appointment canceled.', 'info')
     return redirect(url_for('dashboard'))
 
-
-# ==============================
-# Run App
-# ==============================
-if __name__ == '__main__':
-    if not os.path.exists('database/medisched.db'):
-        with app.app_context():
-            db.create_all()
-            print('Database created!')
-    app.run(debug=True)
